@@ -11,7 +11,7 @@ convertBtn.addEventListener('click', async ()=>{
   if (val.startsWith('http')) body = { url: val };
   else body = { raw: val };
   try {
-    const res = await fetch('/api/convert', {
+    const res = await fetch('http://localhost:3000/api/convert', {
       method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
     });
     const json = await res.json();
