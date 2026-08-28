@@ -1,10 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const {fetchText} = require('./fetcher');
 const {parse} = require('./pokepaste-parser');
-const {validateEvs, convertEvs} = require('./ev-convert');
+const {validateEvs, convertEvs, STATS} = require('./ev-convert');
 
 const app = express();
+app.use(cors());
 app.use(bodyParser.json());
 
 // POST { url: 'https://pokepast.es/abcdef' } or { raw: 'text...' }
@@ -58,8 +60,5 @@ app.post('/api/convert', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, ()=>console.log(`Server listening on ${PORT}`));
-
-// STATS needed for building output
-const STATS = ["HP","Atk","Def","SpA","SpD","Spe"];
 
 module.exports = app;
