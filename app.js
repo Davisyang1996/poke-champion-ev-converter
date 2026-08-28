@@ -98,7 +98,7 @@ convertBtn.addEventListener('click', async ()=>{
     }).join('\n\n');
   }
 
-  // Try backend first
+  // Try backend first for local dev only (skip backend on GitHub Pages/static hosts to avoid POST 405)
   let triedBackend = false;
   if (!val.startsWith('http')) {
     // raw text -> parse locally
@@ -108,21 +108,24 @@ convertBtn.addEventListener('click', async ()=>{
     return;
   }
 
-  // If it's a URL, attempt backend; if fails, fallback to client-side fetch via CORS proxy
-  try {
-    triedBackend = true;
-    const res = await fetch('/api/convert', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url: val }) });
-    const ct = (res.headers.get('content-type') || '').toLowerCase();
-    if (res.ok && ct.includes('application/json')) {
-      const json = await res.json();
-      if (json && json.converted && json.converted.length>0) {
-        outEl.textContent = json.converted.map(c=>c.convertedText).join('\n\n');
-        return;
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (isLocalhost) {
+    // If running locally, try backend first; otherwise skip backend to avoid POSTing to a static host
+    try {
+      triedBackend = true;
+      const res = await fetch('/api/convert', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url: val }) });
+      const ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (res.ok && ct.includes('application/json')) {
+        const json = await res.json();
+        if (json && json.converted && json.converted.length>0) {
+          outEl.textContent = json.converted.map(c=>c.convertedText).join('\n\n');
+          return;
+        }
       }
+      // If response wasn't JSON or didn't contain converted sets, fallthrough to client-side fallback
+    } catch (err) {
+      // ignore and try client-side fallback
     }
-    // If response wasn't JSON or didn't contain converted sets, fallthrough to client-side fallback
-  } catch (err) {
-    // ignore and try client-side fallback
   }
 
   // Fallback: use allorigins CORS proxy to fetch raw page and extract <pre>
