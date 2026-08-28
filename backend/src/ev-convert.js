@@ -18,71 +18,33 @@ function validateEvs(evs) {
     }
     sum += v;
   }
-  if (sum > NEW_TOTAL) errors.push(`Total EVs ${sum} exceeds ${NEW_TOTAL}`);
+  if (sum > NEW_TOTAL) errors.push(`Total SPs ${sum} exceeds ${NEW_TOTAL}`);
   return {ok: errors.length === 0, errors, sum};
 }
 
+function spToEv(sp) {
+  const s = Number(sp || 0);
+  if (s <= 0) return 0;
+  if (s === 1) return 4;
+  // For 2 or more SP: EV = SP * 8 - 4
+  return Math.min(OLD_MAX, s * 8 - 4);
+}
+
 function convertEvs(evs) {
-  // evs: object with STATS keys
-  // Validate first
+  // evs: object with STATS keys representing SP values (0-32)
   const validation = validateEvs(evs);
   if (!validation.ok) return {error: 'validation', details: validation};
 
-  // Scale each stat
-  const factor = OLD_TOTAL / NEW_TOTAL; // ~7.69697
-  const scaled = {};
-  const remainders = {};
+  const out = {};
   let total = 0;
   for (const s of STATS) {
-    const raw = (Number(evs[s] || 0)) * factor;
-    const floored = Math.floor(raw);
-    scaled[s] = floored;
-    remainders[s] = raw - floored;
-    total += floored;
+    const sp = Number(evs[s] || 0);
+    const ev = spToEv(sp);
+    out[s] = ev;
+    total += ev;
   }
 
-  // Clamp to OLD_MAX and collect overflow
-  let overflow = 0;
-  for (const s of STATS) {
-    if (scaled[s] > OLD_MAX) {
-      overflow += scaled[s] - OLD_MAX;
-      scaled[s] = OLD_MAX;
-    }
-  }
-
-  // If overflow occurred, we'll try to redistribute the overflow by adding to others where possible (very unlikely from scaling but handle anyway)
-  // But first attempt to reach OLD_TOTAL by distributing based on remainder order
-  function eligibleStats() {
-    return STATS.filter(s => scaled[s] < OLD_MAX);
-  }
-
-  // Sort stats by remainder descending, tie-break by STATS order
-  const remainderOrder = STATS.slice().sort((a,b) => {
-    if (remainders[b] !== remainders[a]) return remainders[b] - remainders[a];
-    return STATS.indexOf(a) - STATS.indexOf(b);
-  });
-
-  // Distribute remaining points to reach OLD_TOTAL
-  let remaining = OLD_TOTAL - total;
-  let idx = 0;
-  while (remaining > 0) {
-    // find next stat in remainderOrder that can accept +1 without exceeding OLD_MAX
-    let assigned = false;
-    for (const s of remainderOrder) {
-      if (scaled[s] < OLD_MAX) {
-        scaled[s] += 1;
-        remaining -= 1;
-        assigned = true;
-        if (remaining <= 0) break;
-      }
-    }
-    if (!assigned) break; // no eligible stat
-  }
-
-  // Final sanity: if still not reached OLD_TOTAL but no place to put them, return scaled as-is
-  const finalTotal = STATS.reduce((a,c)=>a+scaled[c],0);
-
-  return {ok:true, evs: scaled, total: finalTotal};
+  return {ok: true, evs: out, total};
 }
 
 module.exports = {STATS, validateEvs, convertEvs};

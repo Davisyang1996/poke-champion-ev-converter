@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Pokepaste EV Converter</title>
+  <title>Davo's PokePaste Converter</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="container">
-    <h1>Pokepaste EV Converter</h1>
+    <h1>Davo's PokePaste Converter</h1>
+    <p class="summary">Simple tool that converts Stat Point (SP) to Effort Value (EV), i.e. Pokemon Champion to mainline EV</p>
     <div class="panel">
       <div class="left">
         <label for="url">Pokepaste URL or raw text</label>
@@ -19,11 +20,16 @@
         </div>
       </div>
       <div class="right">
-        <label>Converted output</label>
+        <div class="right-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <label style="margin:0">Converted output</label>
+          <div>
+            <button id="copyAll" title="Copy all converted text" style="margin-left:8px;background:#3a3f44;border:none;color:#fff;padding:6px 8px;border-radius:4px;cursor:pointer">Copy All</button>
+          </div>
+        </div>
         <pre id="output"></pre>
       </div>
     </div>
-    <p class="note">Backend must be running at <code>http://localhost:3000</code> for live conversion.</p>
+    <div style="height:12px"></div>
   </div>
   <script src="app.js"></script>
 </body>

@@ -93,12 +93,37 @@ function parseSet(block) {
 }
 
 function parse(raw) {
-  // Splits on blank lines (two or more newlines) to get sets
-  const blocks = raw.split(/\n\s*\n/).map(b=>b.trim()).filter(b=>b.length>0);
+  // More robust splitting: walk lines and start a new set when a line looks like a header ("Name @ Item" or a standalone name followed by Ability/Level/EVs)
+  const allLines = raw.split(/\r?\n/).map(l=>l.replace(/\u00A0/g,' ').trimRight());
+  // normalize lines by trimming right only; preserve empty lines
+  const starts = [];
+  for (let i=0;i<allLines.length;i++) {
+    const line = allLines[i].trim();
+    if (!line) continue;
+    // Heuristics for set header:
+    // - line contains ' @ ' (Name @ Item)
+    // - or line does not contain ':' and next non-empty line starts with Ability: or Level: or EVs:
+    if (line.indexOf('@') !== -1) {
+      starts.push(i);
+      continue;
+    }
+    const nextIdx = (()=>{ for (let j=i+1;j<allLines.length;j++) if (allLines[j].trim()!=='') return j; return -1 })();
+    const nextLine = nextIdx>=0 ? allLines[nextIdx].trim() : '';
+    if (!line.includes(':') && ( /^Ability:/i.test(nextLine) || /^Level:/i.test(nextLine) || /^EVs?:/i.test(nextLine) )) {
+      starts.push(i);
+      continue;
+    }
+  }
+
   const sets = [];
-  for (const b of blocks) {
-    const s = parseSet(b);
-    if (s) sets.push(s);
+  if (starts.length === 0) return sets;
+  for (let sidx=0;sidx<starts.length;sidx++) {
+    const start = starts[sidx];
+    const end = (sidx+1<starts.length) ? starts[sidx+1] : allLines.length;
+    const blockLines = allLines.slice(start,end).map(l=>l.trim()).filter(l=>l.length>0);
+    const block = blockLines.join('\n');
+    const parsed = parseSet(block);
+    if (parsed) sets.push(parsed);
   }
   return sets;
 }

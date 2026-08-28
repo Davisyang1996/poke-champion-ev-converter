@@ -7,14 +7,11 @@ test('convert simple 2 / 32 / 32 example', () => {
   expect(v.ok).toBe(true);
   const r = convertEvs(evs);
   expect(r.ok).toBe(true);
-  // Expect totals and that Atk and SpD are large and none exceed 252
-  expect(r.total).toBe(508);
-  expect(r.evs.Atk).toBeLessThanOrEqual(252);
-  expect(r.evs.SpD).toBeLessThanOrEqual(252);
-  // For this particular sample we expect roughly: HP ~16, Atk ~246, SpD ~246 (sum 508)
-  expect(r.evs.HP).toBe(16);
-  expect(r.evs.Atk).toBe(246);
-  expect(r.evs.SpD).toBe(246);
+  // Using SP->EV mapping: 2 SP -> 12 EV, 32 SP -> 252 EV each
+  expect(r.total).toBe(12 + 252 + 252);
+  expect(r.evs.Atk).toBe(252);
+  expect(r.evs.SpD).toBe(252);
+  expect(r.evs.HP).toBe(12);
 });
 
 test('reject invalid evs > 32 or sum > 66', () => {
@@ -42,5 +39,6 @@ Adamant Nature
   expect(v.ok).toBe(true);
   const r = convertEvs(s.evs);
   expect(r.ok).toBe(true);
-  expect(r.total).toBe(508);
+  // Using SP->EV mapping: totals may exceed 508; assert mapped total
+  expect(r.total).toBe(12 + 252 + 252);
 });
