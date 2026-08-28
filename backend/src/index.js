@@ -5,9 +5,17 @@ const {fetchText} = require('./fetcher');
 const {parse} = require('./pokepaste-parser');
 const {validateEvs, convertEvs, STATS} = require('./ev-convert');
 
+const path = require('path');
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
+
+// Serve frontend static files so the UI and API are same-origin. This avoids file:// and CORS issues.
+const frontendRoot = path.join(__dirname, '..', '..', 'frontend');
+app.use(express.static(frontendRoot));
+// Serve index.html for root
+app.get('/', (req, res) => res.sendFile(path.join(frontendRoot, 'index.html')));
+
 
 // POST { url: 'https://pokepast.es/abcdef' } or { raw: 'text...' }
 app.post('/api/convert', async (req, res) => {
