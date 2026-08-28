@@ -98,119 +98,17 @@ convertBtn.addEventListener('click', async ()=>{
     }).join('\n\n');
   }
 
-  // Try backend first for local dev only (skip backend on GitHub Pages/static hosts to avoid POST 405)
-  let triedBackend = false;
-  if (!val.startsWith('http')) {
-    // raw text -> parse locally
-    const sets = parse(val);
-    if (sets.length===0) { outEl.textContent = 'No sets found in input.'; return; }
-    outEl.textContent = convertSetsToText(sets);
+  // Only accept raw poke-paste text in the input. URL fetching is intentionally disabled for the public/static site.
+  if (/\bhttps?:\/\//i.test(val)) {
+    outEl.textContent = 'Please paste the raw poke-paste text (not a URL). URL fetching is not supported on the public site for privacy and reliability.';
     return;
   }
 
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (isLocalhost) {
-    // If running locally, try backend first; otherwise skip backend to avoid POSTing to a static host
-    try {
-      triedBackend = true;
-      const res = await fetch('/api/convert', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url: val }) });
-      const ct = (res.headers.get('content-type') || '').toLowerCase();
-      if (res.ok && ct.includes('application/json')) {
-        const json = await res.json();
-        if (json && json.converted && json.converted.length>0) {
-          outEl.textContent = json.converted.map(c=>c.convertedText).join('\n\n');
-          return;
-        }
-      }
-      // If response wasn't JSON or didn't contain converted sets, fallthrough to client-side fallback
-    } catch (err) {
-      // ignore and try client-side fallback
-    }
-  }
-
-  // Fallback: try several public proxies in sequence and extract the paste text
-  async function tryProxies(targetUrl) {
-    const proxies = [
-      // Jina AI text gateway has proven reliable for plain-text content
-      { name: 'jina', prefix: 'https://r.jina.ai/http://', rawAppend: true },
-      // allorigins returning raw HTML
-      { name: 'allorigins', prefix: 'https://api.allorigins.win/raw?url=', rawAppend: false },
-      // codetabs proxy (JSON wrapper sometimes)
-      { name: 'codetabs', prefix: 'https://api.codetabs.cn/v1/proxy?quest=', rawAppend: false },
-      // thingproxy (may be unreliable)
-      { name: 'thingproxy', prefix: 'https://thingproxy.freeboard.io/fetch/', rawAppend: false },
-      // corsproxy.io (may return 403 depending on origin)
-      { name: 'corsproxy', prefix: 'https://corsproxy.io/?', rawAppend: false }
-    ];
-
-    for (const p of proxies) {
-      try {
-        let fetchUrl;
-        if (p.rawAppend && /^https?:\/\//i.test(targetUrl)) {
-          // r.jina.ai expects the target URL without the protocol segment encoded into the path
-          fetchUrl = p.prefix + targetUrl.replace(/^https?:\/\//i, '');
-        } else {
-          fetchUrl = p.prefix + encodeURIComponent(targetUrl);
-        }
-        const r = await fetch(fetchUrl);
-        if (!r.ok) {
-          // try next
-          continue;
-        }
-        const txt = await r.text();
-        if (!txt) continue;
-        return { source: p.name, text: txt };
-      } catch (e) {
-        // try next proxy
-        continue;
-      }
-    }
-    return null;
-  }
-
-  try {
-    // If a self-hosted proxy is configured (e.g., a Vercel function), try it first
-    if (window.SERVER_PROXY_URL && typeof window.SERVER_PROXY_URL === 'string' && window.SERVER_PROXY_URL.length>0) {
-      try {
-        const proxyUrl = window.SERVER_PROXY_URL + (window.SERVER_PROXY_URL.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(val);
-        const r = await fetch(proxyUrl);
-        if (r.ok) {
-          const txt = await r.text();
-          // use the returned text directly
-          const sets = parse(decodeHtmlEntities(txt.replace(/<br\s*\/?>(\s*)/gi,'\n').replace(/<[^>]+>/g,'')));
-          if (sets.length>0) { outEl.textContent = convertSetsToText(sets); return; }
-        }
-      } catch (e) {
-        // if server proxy failed, fall through to public proxies
-      }
-    }
-
-    const result = await tryProxies(val);
-    if (!result) {
-      outEl.textContent = 'Could not fetch the paste via public proxies. Please paste the raw poke-paste text into the left box instead.' + (triedBackend? ' (backend attempted)' : '');
-      return;
-    }
-
-    let text = result.text;
-    // If proxy returned an HTML page, try to extract <pre> blocks, otherwise treat as raw/markdown
-    const preRegex = /<pre[^>]*>([\s\S]*?)<\/pre>/gi;
-    const matches = [];
-    let m;
-    while ((m = preRegex.exec(text)) !== null) if (m[1]) matches.push(m[1]);
-    if (matches.length===0) {
-      // no <pre> blocks — try stripping HTML tags and decoding entities
-      text = decodeHtmlEntities(text.replace(/<br\s*\/?>(\s*)/gi,'\n').replace(/<[^>]+>/g,''));
-    } else {
-      text = matches.map(inner=> decodeHtmlEntities(inner.replace(/<br\s*\/?>(\s*)/gi,'\n').replace(/<[^>]+>/g,''))).join('\n\n');
-    }
-
-    const sets = parse(text);
-    if (sets.length===0) { outEl.textContent = 'No sets found in fetched paste.'; return; }
-    outEl.textContent = convertSetsToText(sets);
-    return;
-  } catch (err) {
-    outEl.textContent = 'Request failed: ' + (err.message || 'Unknown error') + (triedBackend? ' (backend attempted)' : '');
-  }
+  // Parse raw text locally
+  const sets = parse(val);
+  if (sets.length===0) { outEl.textContent = 'No sets found in input.'; return; }
+  outEl.textContent = convertSetsToText(sets);
+  return;
 });
 
 // Copy All button
@@ -243,7 +141,5 @@ if (copyBtn) {
     }
   });
 }
-
-clearBtn.addEventListener('click', ()=>{ inputEl.value = ''; outEl.textContent = ''; });
 
 clearBtn.addEventListener('click', ()=>{ inputEl.value = ''; outEl.textContent = ''; });

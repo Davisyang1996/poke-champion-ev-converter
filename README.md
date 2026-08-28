@@ -47,14 +47,6 @@ Contributing
 
 - If you find a paste format that doesn't parse correctly, please open an issue with the raw paste example so the parser can be extended and tests added.
 
-Deployment: Vercel serverless proxy (optional)
-
-- To make the GitHub Pages frontend reliably fetch pokepaste URLs from the browser, deploy the included serverless function to Vercel. The function is located at serverless/vercel-proxy.js and a Vercel API wrapper is at api/vercel-proxy.js.
-- After deployment (for example at https://your-project.vercel.app/api/vercel-proxy), set the frontend's SERVER_PROXY_URL to that URL. Edit frontend/index.html and add a script before app.js like:
-
-  <script>window.SERVER_PROXY_URL = 'https://your-project.vercel.app/api/vercel-proxy';</script>
-
-- GitHub Action (optional): a convenience workflow .github/workflows/deploy-vercel.yml is included. To use it, add the following repository secrets: VERCEL_TOKEN, VERCEL_PROJECT_ID, VERCEL_ORG_ID. Then pushing to main will trigger a Vercel deploy.
 
 License
 
