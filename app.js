@@ -128,23 +128,66 @@ convertBtn.addEventListener('click', async ()=>{
     }
   }
 
-  // Fallback: use allorigins CORS proxy to fetch raw page and extract <pre>
+  // Fallback: try several public proxies in sequence and extract the paste text
+  async function tryProxies(targetUrl) {
+    const proxies = [
+      // Jina AI text gateway has proven reliable for plain-text content
+      { name: 'jina', prefix: 'https://r.jina.ai/http://', rawAppend: true },
+      // allorigins returning raw HTML
+      { name: 'allorigins', prefix: 'https://api.allorigins.win/raw?url=', rawAppend: false },
+      // codetabs proxy (JSON wrapper sometimes)
+      { name: 'codetabs', prefix: 'https://api.codetabs.cn/v1/proxy?quest=', rawAppend: false },
+      // thingproxy (may be unreliable)
+      { name: 'thingproxy', prefix: 'https://thingproxy.freeboard.io/fetch/', rawAppend: false },
+      // corsproxy.io (may return 403 depending on origin)
+      { name: 'corsproxy', prefix: 'https://corsproxy.io/?', rawAppend: false }
+    ];
+
+    for (const p of proxies) {
+      try {
+        let fetchUrl;
+        if (p.rawAppend && /^https?:\/\//i.test(targetUrl)) {
+          // r.jina.ai expects the target URL without the protocol segment encoded into the path
+          fetchUrl = p.prefix + targetUrl.replace(/^https?:\/\//i, '');
+        } else {
+          fetchUrl = p.prefix + encodeURIComponent(targetUrl);
+        }
+        const r = await fetch(fetchUrl);
+        if (!r.ok) {
+          // try next
+          continue;
+        }
+        const txt = await r.text();
+        if (!txt) continue;
+        return { source: p.name, text: txt };
+      } catch (e) {
+        // try next proxy
+        continue;
+      }
+    }
+    return null;
+  }
+
   try {
-    const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(val);
-    const resp = await fetch(proxy);
-    if (!resp.ok) throw new Error('Proxy fetch failed');
-    let text = await resp.text();
-    // extract all <pre> blocks
+    const result = await tryProxies(val);
+    if (!result) {
+      outEl.textContent = 'Could not fetch the paste via public proxies. Please paste the raw poke-paste text into the left box instead.' + (triedBackend? ' (backend attempted)' : '');
+      return;
+    }
+
+    let text = result.text;
+    // If proxy returned an HTML page, try to extract <pre> blocks, otherwise treat as raw/markdown
     const preRegex = /<pre[^>]*>([\s\S]*?)<\/pre>/gi;
     const matches = [];
     let m;
     while ((m = preRegex.exec(text)) !== null) if (m[1]) matches.push(m[1]);
     if (matches.length===0) {
-      // as a fallback, try to use the raw text directly
-      text = decodeHtmlEntities(text.replace(/<[^>]+>/g,''));
+      // no <pre> blocks — try stripping HTML tags and decoding entities
+      text = decodeHtmlEntities(text.replace(/<br\s*\/?>(\s*)/gi,'\n').replace(/<[^>]+>/g,''));
     } else {
       text = matches.map(inner=> decodeHtmlEntities(inner.replace(/<br\s*\/?>(\s*)/gi,'\n').replace(/<[^>]+>/g,''))).join('\n\n');
     }
+
     const sets = parse(text);
     if (sets.length===0) { outEl.textContent = 'No sets found in fetched paste.'; return; }
     outEl.textContent = convertSetsToText(sets);
