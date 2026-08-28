@@ -112,14 +112,17 @@ convertBtn.addEventListener('click', async ()=>{
   try {
     triedBackend = true;
     const res = await fetch('/api/convert', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url: val }) });
-    const json = await res.json();
-    if (res.ok && json && json.converted && json.converted.length>0) {
-      outEl.textContent = json.converted.map(c=>c.convertedText).join('\n\n');
-      return;
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (res.ok && ct.includes('application/json')) {
+      const json = await res.json();
+      if (json && json.converted && json.converted.length>0) {
+        outEl.textContent = json.converted.map(c=>c.convertedText).join('\n\n');
+        return;
+      }
     }
-    // fallthrough to client-side
+    // If response wasn't JSON or didn't contain converted sets, fallthrough to client-side fallback
   } catch (err) {
-    // continue to fallback
+    // ignore and try client-side fallback
   }
 
   // Fallback: use allorigins CORS proxy to fetch raw page and extract <pre>
