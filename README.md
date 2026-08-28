@@ -1,31 +1,52 @@
-# Pokepaste EV Converter
+# Davo's PokePaste Converter
 
-This monorepo contains a small Node backend and a minimal frontend to convert Pokepaste sets from Pokemon Champion's EV system (66 total, 32 max per stat) to the classic 508 total / 252 max per stat system.
+Simple tool that converts Stat Point (SP) spreads from Pokemon Champion format to Effort Values (EV) used in mainline Pokémon.
 
-Backend (server)
+Overview
 
-- Location: backend/
-- Start: cd backend && npm start
-- API: POST http://localhost:3000/api/convert
+- Frontend: single-page UI (frontend/) where a user can paste a Pokepaste URL or raw paste text and get converted sets.
+- Backend: Node + Express API (backend/) that fetches a paste, parses Pokémon sets, validates SPs (0..32, total SPs ≤ 66), and converts each SP value to EV according to the mapping below.
+- Deployment: frontend is published to GitHub Pages via a GitHub Actions workflow (.github/workflows/deploy-pages.yml).
+
+Conversion formula (SP → EV)
+
+- 0 SP = 0 EV
+- 1 SP = 4 EV
+- 2+ SP = SP × 8 − 4 (for example, 2 SP = 12 EV, 32 SP = 252 EV)
+
+Note: This mapping is applied per-stat and caps individual stats at 252 EV. Because the mapping is per-stat, the summed total EVs for a set can exceed 508 in some cases (for example multiple stats at 32 SP each). The code preserves the SP→EV mapping rather than forcibly normalizing totals to 508; if you want a normalization/redistribution step to enforce a 508 total, that can be added.
+
+Getting started (local)
+
+1. Install dependencies and run tests (backend):
+   - cd backend
+   - npm install
+   - npm test
+2. Run the backend server (it serves the frontend too):
+   - cd backend
+   - npm start
+3. Open the app in a browser:
+   - Visit http://localhost:3000 and paste a Pokepaste URL or raw paste text, then click Convert.
+
+API
+
+- POST /api/convert
   - Body: { "url": "https://pokepast.es/abcd" } or { "raw": "<pokepaste text>" }
-  - Response: { converted: [ { name, original, convertedText } ], errors: [...] }
+  - Response: JSON with { converted: [ { name, original, convertedText } ], errors: [...] }
 
-Frontend
+Testing & CI
 
-- Location: frontend/
-- Open frontend/index.html in a browser and paste a Pokepaste URL or raw paste text. The page expects the backend at http://localhost:3000.
+- Unit tests are in backend/test and run with `npm test`.
+- A GitHub Actions workflow runs tests on pushes and another workflow deploys the frontend folder to GitHub Pages on push to main.
 
-Testing
+Security & privacy
 
-- Unit tests are in backend/test. Run tests with:
-  - cd backend && npm test
+- The server fetches public Pokepaste pages and extracts the raw paste text for parsing; it does not store or forward private data.
 
-CI
+Contributing
 
-- GitHub Actions workflow is installed at .github/workflows/nodejs.yml and runs backend tests on Node 18 and 20.
+- If you find a paste format that doesn't parse correctly, please open an issue with the raw paste example so the parser can be extended and tests added.
 
-Notes
+License
 
-- The parser is intentionally pragmatic and tuned to the sample formats used in competitive play. If you encounter a paste that doesn't parse, send an example and it will be added to more tests.
-- The EV conversion uses deterministic fractional-remainder rounding and clamps to 252 per stat.
-
+- MIT
