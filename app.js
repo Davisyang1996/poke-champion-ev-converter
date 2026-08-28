@@ -169,6 +169,22 @@ convertBtn.addEventListener('click', async ()=>{
   }
 
   try {
+    // If a self-hosted proxy is configured (e.g., a Vercel function), try it first
+    if (window.SERVER_PROXY_URL && typeof window.SERVER_PROXY_URL === 'string' && window.SERVER_PROXY_URL.length>0) {
+      try {
+        const proxyUrl = window.SERVER_PROXY_URL + (window.SERVER_PROXY_URL.includes('?') ? '&' : '?') + 'url=' + encodeURIComponent(val);
+        const r = await fetch(proxyUrl);
+        if (r.ok) {
+          const txt = await r.text();
+          // use the returned text directly
+          const sets = parse(decodeHtmlEntities(txt.replace(/<br\s*\/?>(\s*)/gi,'\n').replace(/<[^>]+>/g,'')));
+          if (sets.length>0) { outEl.textContent = convertSetsToText(sets); return; }
+        }
+      } catch (e) {
+        // if server proxy failed, fall through to public proxies
+      }
+    }
+
     const result = await tryProxies(val);
     if (!result) {
       outEl.textContent = 'Could not fetch the paste via public proxies. Please paste the raw poke-paste text into the left box instead.' + (triedBackend? ' (backend attempted)' : '');
