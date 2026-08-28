@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pokepaste EV Converter</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Pokepaste EV Converter</h1>
+    <div class="panel">
+      <div class="left">
+        <label for="url">Pokepaste URL or raw text</label>
+        <textarea id="input" placeholder="https://pokepast.es/eaa93f2a85e9dc02 or paste raw text"></textarea>
+        <div class="controls">
+          <button id="convert">Convert</button>
+          <button id="clear">Clear</button>
+        </div>
+      </div>
+      <div class="right">
+        <label>Converted output</label>
+        <pre id="output"></pre>
+      </div>
+    </div>
+    <p class="note">Backend must be running at <code>http://localhost:3000</code> for live conversion.</p>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
